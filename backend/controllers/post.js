@@ -1,13 +1,18 @@
 const Post = require("../models/Post");
 const User = require("../models/User");
+const cloudinary = require("cloudinary");
 
 exports.createPost = async (req, res) => {
   try {
+    const myCloud = await cloudinary.v2.uploader.upload(req.body.image, {
+      folder: "posts",
+    });
+
     const newPostData = {
       caption: req.body.caption,
       image: {
-        public_id: "req.body.public_id",
-        url: "req.body.url",
+        public_id: myCloud.public_id,
+        url: myCloud.secure_url,
       },
       owner: req.user._id,
     };
@@ -15,13 +20,13 @@ exports.createPost = async (req, res) => {
     const newPost = await Post.create(newPostData);
     const user = await User.findById(req.user._id);
 
-    user.posts.push(newPost._id);
+    user.posts.unshift(newPost._id);
 
     await user.save();
 
     res.status(201).json({
       success: true,
-      post: newPost,
+      message: "Post created successfully",
     });
   } catch (error) {
     res.status(500).json({
@@ -36,25 +41,39 @@ exports.deletePost = async (req, res) => {
     const post = await Post.findById(req.params.id);
 
     if (!post) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Post not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
     }
 
     if (post.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
-    await post.remove();
-    const user = await User.findById(req.user._id);
-    const index = await user.posts.indexOf(req.params.id);
+    await cloudinary.v2.uploader.destroy(post.image.public_id);
 
-    user.posts.slice(index, 1);
+    await post.remove();
+
+    const user = await User.findById(req.user._id);
+
+    const index = user.posts.indexOf(req.params.id);
+    user.posts.splice(index, 1);
+
     await user.save();
 
-    res.status(200).json({ success: true, message: "post deleted" });
+    res.status(200).json({
+      success: true,
+      message: "Post deleted",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

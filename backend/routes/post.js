@@ -8,6 +8,7 @@ const {
   commentOnPost,
   deleteComment,
 } = require("../controllers/post");
+const { getMyPosts } = require("../controllers/user");
 const { isAuthenticated } = require("../middlewares/auth");
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router
   .delete(isAuthenticated, deletePost)
   .put(isAuthenticated, updateCaption);
 router.route("/posts").get(isAuthenticated, getPostOfFollowing);
+router.route("/my/posts").get(isAuthenticated, getMyPosts);
 router
   .route("/post/comment/:id")
   .put(isAuthenticated, commentOnPost)
